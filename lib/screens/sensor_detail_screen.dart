@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sensor_hub/data/mock_sensors.dart';
 import 'package:sensor_hub/models/sensor.dart';
+import 'package:sensor_hub/theme/app_theme.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/widgets/status_badge.dart';
 
 class SensorDetailScreen extends StatelessWidget {
   const SensorDetailScreen({super.key, required this.sensorId});
@@ -13,16 +15,32 @@ class SensorDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final sensor = findSensorById(sensorId);
     if (sensor == null) {
-      return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => _goBack(context),
-          ),
-          title: const Text('Capteur introuvable'),
+      return CupertinoPageScaffold(
+        navigationBar: const CupertinoNavigationBar(
+          previousPageTitle: 'SensorHub',
+          middle: Text('Capteur introuvable'),
         ),
-        body: const Center(
-          child: Text('Aucun capteur ne correspond à cet identifiant.'),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  CupertinoIcons.search,
+                  size: 40,
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                ),
+                const SizedBox(height: 12),
+                const Text('Aucun capteur ne correspond à cet identifiant.'),
+                const SizedBox(height: 16),
+                CupertinoButton.filled(
+                  onPressed: () => _goBack(context),
+                  child: const Text('Retour à la liste'),
+                ),
+              ],
+            ),
+          ),
         ),
       );
     }
@@ -46,96 +64,115 @@ class _SensorDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isOffline = !sensor.isOnline;
-    final connectionColor = isOffline
-        ? theme.colorScheme.outline
-        : theme.colorScheme.primary;
+    final isAlert = sensor.status == SensorStatus.alert;
+    final secondary = CupertinoColors.secondaryLabel.resolveFrom(context);
+    final labelColor = CupertinoColors.label.resolveFrom(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => SensorDetailScreen._goBack(context),
-        ),
-        title: Text(sensor.detailTitle),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        previousPageTitle: 'SensorHub',
+        middle: Text(sensor.detailTitle),
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: SafeArea(
+        child: ListView(
           children: [
-            Row(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StatusBadge(sensor: sensor, connectionOnly: true),
+                  if (isOffline) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Dernières valeurs connues, le capteur ne répond plus.',
+                      style: TextStyle(color: secondary, fontSize: 15),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Text(
+                    formatTemperature(sensor.temperature),
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1,
+                      color: isOffline ? secondary : labelColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Température',
+                    style: TextStyle(color: secondary, fontSize: 17),
+                  ),
+                ],
+              ),
+            ),
+            CupertinoListSection.insetGrouped(
               children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: connectionColor,
-                    shape: BoxShape.circle,
+                CupertinoListTile(
+                  leading: Icon(
+                    CupertinoIcons.drop,
+                    color: CupertinoColors.systemBlue.resolveFrom(context),
+                  ),
+                  title: const Text('Humidité'),
+                  additionalInfo: Text(formatPercent(sensor.humidity)),
+                ),
+                CupertinoListTile(
+                  leading: Icon(
+                    CupertinoIcons.battery_25_percent,
+                    color: _batteryColor(context, sensor.battery),
+                  ),
+                  title: const Text('Batterie'),
+                  additionalInfo: Text(
+                    formatPercent(sensor.battery),
+                    style: TextStyle(
+                      color: _batteryColor(context, sensor.battery),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  sensor.connectionLabel,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: connectionColor,
-                    fontWeight: FontWeight.w600,
+                CupertinoListTile(
+                  leading: Icon(
+                    isAlert
+                        ? CupertinoIcons.exclamationmark_triangle_fill
+                        : CupertinoIcons.check_mark_circled,
+                    color: isAlert
+                        ? CupertinoColors.systemOrange.resolveFrom(context)
+                        : AppTheme.primary,
+                  ),
+                  title: const Text('État'),
+                  additionalInfo: Text(
+                    sensor.etatLabel,
+                    style: TextStyle(
+                      color: isAlert
+                          ? CupertinoColors.systemOrange.resolveFrom(context)
+                          : AppTheme.primary,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 32),
-            _MetricRow(
-              label: 'Température',
-              value: formatTemperature(sensor.temperature),
-            ),
-            _MetricRow(
-              label: 'Humidité',
-              value: formatPercent(sensor.humidity),
-            ),
-            _MetricRow(label: 'Batterie', value: formatPercent(sensor.battery)),
-            const SizedBox(height: 24),
-            _MetricRow(label: 'État', value: sensor.etatLabel),
-            const SizedBox(height: 32),
-            Text('Dernière mesure', style: theme.textTheme.titleSmall),
-            const SizedBox(height: 6),
-            Text(
-              formatDateTime(sensor.lastMeasurement),
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            CupertinoListSection.insetGrouped(
+              header: const Text('Dernière mesure'),
+              children: [
+                CupertinoListTile(
+                  title: Text(formatDateTime(sensor.lastMeasurement)),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
-}
 
-class _MetricRow extends StatelessWidget {
-  const _MetricRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
-          Text(
-            value,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
+  static Color _batteryColor(BuildContext context, int battery) {
+    if (battery <= 20) {
+      return CupertinoColors.systemRed.resolveFrom(context);
+    }
+    if (battery <= 40) {
+      return CupertinoColors.systemOrange.resolveFrom(context);
+    }
+    return AppTheme.primary;
   }
 }

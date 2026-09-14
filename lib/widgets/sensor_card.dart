@@ -1,96 +1,76 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sensor_hub/models/sensor.dart';
+import 'package:sensor_hub/theme/app_theme.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/widgets/status_badge.dart';
 
 class SensorCard extends StatelessWidget {
   const SensorCard({super.key, required this.sensor});
 
   final Sensor sensor;
 
+  Color _accentColor(BuildContext context) {
+    if (!sensor.isOnline) {
+      return CupertinoColors.systemGrey.resolveFrom(context);
+    }
+    if (sensor.status == SensorStatus.alert) {
+      return CupertinoColors.systemOrange.resolveFrom(context);
+    }
+    return AppTheme.primary;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isOffline = !sensor.isOnline;
-    final isAlert = sensor.isOnline && sensor.status == SensorStatus.alert;
+    final muted = isOffline
+        ? CupertinoColors.secondaryLabel.resolveFrom(context)
+        : CupertinoColors.label.resolveFrom(context);
 
-    final Color accent;
-    if (isOffline) {
-      accent = theme.colorScheme.outline;
-    } else if (isAlert) {
-      accent = theme.colorScheme.error;
-    } else {
-      accent = theme.colorScheme.primary;
-    }
-
-    return Opacity(
-      opacity: isOffline ? 0.72 : 1,
-      child: Card(
-        elevation: 0,
-        color: isOffline
-            ? theme.colorScheme.surfaceContainerHighest
-            : theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: isOffline
-                ? theme.colorScheme.outlineVariant
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+    return Semantics(
+      button: true,
+      label:
+          '${sensor.name}, ${formatTemperature(sensor.temperature)}, ${sensor.cardStatusLabel}',
+      child: CupertinoListTile(
+        leadingSize: 12,
+        leading: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: _accentColor(context),
+            shape: BoxShape.circle,
           ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => context.push('/sensors/${sensor.id}'),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        sensor.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: isOffline
-                              ? theme.colorScheme.onSurfaceVariant
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      formatTemperature(sensor.temperature, withUnit: false),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isOffline
-                            ? theme.colorScheme.onSurfaceVariant
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      formatPercent(sensor.humidity),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      sensor.cardStatusLabel,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+        title: Text(sensor.name, style: TextStyle(color: muted)),
+        subtitle: Row(
+          children: [
+            Icon(
+              CupertinoIcons.drop,
+              size: 14,
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
             ),
+            const SizedBox(width: 4),
+            Text(
+              formatPercent(sensor.humidity),
+              style: TextStyle(
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(width: 8),
+            StatusBadge(sensor: sensor),
+          ],
+        ),
+        additionalInfo: Text(
+          formatTemperature(sensor.temperature, withUnit: false),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+            color: muted,
           ),
         ),
+        trailing: const CupertinoListTileChevron(),
+        onTap: () => context.push('/sensors/${sensor.id}'),
       ),
     );
   }

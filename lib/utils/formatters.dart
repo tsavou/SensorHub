@@ -20,8 +20,17 @@ String formatDateTime(DateTime value) {
   return '$day/$month/${value.year} à $hour:$minute';
 }
 
+String sensorCountLabel(int count) {
+  return count <= 1 ? '$count capteur' : '$count capteurs';
+}
+
 extension SensorDisplay on Sensor {
-  String get detailTitle => 'Capteur : $name';
+  String get detailTitle {
+    return switch (name.toLowerCase()) {
+      'cave' => 'Capteur de la cave',
+      _ => 'Capteur du ${name.toLowerCase()}',
+    };
+  }
 
   String get cardStatusLabel {
     if (!isOnline) return 'Hors ligne';
