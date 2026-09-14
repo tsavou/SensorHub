@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:sensor_hub/app_router.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const SensorHubApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class SensorHubApp extends StatelessWidget {
+  const SensorHubApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+    return MaterialApp.router(
+      title: 'SensorHub',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF0F766E),
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
+      routerConfig: appRouter,
     );
   }
 }
