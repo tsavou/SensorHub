@@ -1,19 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
-import 'package:sensor_hub/data/mock_sensors.dart';
 import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/theme/app_theme.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 import 'package:sensor_hub/widgets/status_badge.dart';
 
 class SensorDetailScreen extends StatelessWidget {
-  const SensorDetailScreen({super.key, required this.sensorId});
+  const SensorDetailScreen({
+    super.key,
+    required this.sensorId,
+    required this.viewModel,
+  });
 
   final String sensorId;
+  final DashboardViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
-    final sensor = findSensorById(sensorId);
+    final sensor = viewModel.findById(sensorId);
     if (sensor == null) {
       return CupertinoPageScaffold(
         navigationBar: const CupertinoNavigationBar(

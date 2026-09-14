@@ -1,23 +1,16 @@
 import 'package:flutter/cupertino.dart';
-import 'package:sensor_hub/data/mock_sensors.dart';
-import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 import 'package:sensor_hub/widgets/sensor_card.dart';
 
 class DashboardScreen extends StatelessWidget {
-  DashboardScreen({super.key, List<Sensor>? sensors})
-    : sensors = sensors ?? mockSensors;
+  const DashboardScreen({super.key, required this.viewModel});
 
-  final List<Sensor> sensors;
+  final DashboardViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
-    final offlineCount = sensors.where((sensor) => !sensor.isOnline).length;
-    final alertCount = sensors
-        .where(
-          (sensor) => sensor.isOnline && sensor.status == SensorStatus.alert,
-        )
-        .length;
+    final sensors = viewModel.sensors;
 
     return CupertinoPageScaffold(
       child: CustomScrollView(
@@ -37,8 +30,8 @@ class DashboardScreen extends StatelessWidget {
               child: Text(
                 _summaryLabel(
                   total: sensors.length,
-                  offlineCount: offlineCount,
-                  alertCount: alertCount,
+                  offlineCount: viewModel.offlineCount,
+                  alertCount: viewModel.alertCount,
                 ),
                 style: TextStyle(
                   color: CupertinoColors.secondaryLabel.resolveFrom(context),
@@ -49,15 +42,31 @@ class DashboardScreen extends StatelessWidget {
           ),
           if (sensors.isEmpty)
             const SliverFillRemaining(child: _EmptySensors())
-          else
+          else ...[
             SliverToBoxAdapter(
-              child: CupertinoListSection.insetGrouped(
-                header: const Text('Mes capteurs'),
-                children: [
-                  for (final sensor in sensors) SensorCard(sensor: sensor),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(32, 20, 20, 4),
+                child: Text(
+                  'Mes capteurs',
+                  style: TextStyle(
+                    color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
+            SliverList.builder(
+              itemCount: sensors.length,
+              itemBuilder: (context, index) {
+                final sensor = sensors[index];
+                return CupertinoListSection.insetGrouped(
+                  margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+                  children: [SensorCard(sensor: sensor)],
+                );
+              },
+            ),
+          ],
         ],
       ),
     );

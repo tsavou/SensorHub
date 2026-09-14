@@ -32,6 +32,7 @@ class SensorCard extends StatelessWidget {
       label:
           '${sensor.name}, ${formatTemperature(sensor.temperature)}, ${sensor.cardStatusLabel}',
       child: CupertinoListTile(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         leadingSize: 12,
         leading: Container(
           width: 10,
