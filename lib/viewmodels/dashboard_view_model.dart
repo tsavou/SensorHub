@@ -1,8 +1,7 @@
-import 'dart:collection';
-
 import 'package:flutter/foundation.dart';
 import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/repositories/sensor_repository.dart';
+import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 
 class DashboardViewModel extends ChangeNotifier {
   DashboardViewModel({required SensorRepository repository})
@@ -10,24 +9,16 @@ class DashboardViewModel extends ChangeNotifier {
 
   final SensorRepository _repository;
 
-  List<Sensor> _sensors = [];
-  bool _isLoading = false;
-  String? _errorMessage;
+  DashboardState _state = const DashboardInitial();
 
-  UnmodifiableListView<Sensor> get sensors => UnmodifiableListView(_sensors);
-
-  bool get isLoading => _isLoading;
-
-  String? get errorMessage => _errorMessage;
-
-  int get offlineCount => _sensors.where((sensor) => !sensor.isOnline).length;
-
-  int get alertCount => _sensors
-      .where((sensor) => sensor.isOnline && sensor.status == SensorStatus.alert)
-      .length;
+  DashboardState get state => _state;
 
   Sensor? findById(String id) {
-    for (final sensor in _sensors) {
+    final current = _state;
+    if (current is! DashboardSuccess) {
+      return null;
+    }
+    for (final sensor in current.sensors) {
       if (sensor.id == id) {
         return sensor;
       }
@@ -36,25 +27,24 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    if (_isLoading) {
+    if (_state is DashboardLoading) {
       return;
     }
 
-    _isLoading = true;
-    _errorMessage = null;
-    notifyListeners();
+    _setState(const DashboardLoading());
 
     try {
-      _sensors = await _repository.getSensors();
+      final sensors = await _repository.getSensors();
+      _setState(DashboardSuccess(sensors));
     } on SensorRepositoryException catch (error) {
-      _sensors = [];
-      _errorMessage = error.message;
+      _setState(DashboardError(error.message));
     } catch (_) {
-      _sensors = [];
-      _errorMessage = 'Une erreur est survenue.';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setState(const DashboardError('Une erreur est survenue.'));
     }
+  }
+
+  void _setState(DashboardState state) {
+    _state = state;
+    notifyListeners();
   }
 }

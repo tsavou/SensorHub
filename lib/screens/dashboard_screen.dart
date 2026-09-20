@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 import 'package:sensor_hub/widgets/sensor_card.dart';
 
@@ -26,7 +27,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return ListenableBuilder(
       listenable: _viewModel,
       builder: (context, _) {
-        final sensors = _viewModel.sensors;
+        final state = _viewModel.state;
+        final isLoading =
+            state is DashboardLoading || state is DashboardInitial;
 
         return CupertinoPageScaffold(
           child: CustomScrollView(
@@ -36,75 +39,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 border: null,
                 trailing: CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: _viewModel.isLoading ? null : _viewModel.load,
-                  child: _viewModel.isLoading
+                  onPressed: isLoading ? null : _viewModel.load,
+                  child: isLoading
                       ? const CupertinoActivityIndicator()
                       : const Icon(CupertinoIcons.refresh),
                 ),
               ),
-              if (_viewModel.isLoading)
-                const SliverFillRemaining(
-                  child: Center(child: CupertinoActivityIndicator()),
-                )
-              else if (_viewModel.errorMessage != null)
-                SliverFillRemaining(
-                  child: _ErrorSensors(
-                    message: _viewModel.errorMessage!,
-                    onRetry: _viewModel.load,
-                  ),
-                )
-              else if (sensors.isEmpty)
-                const SliverFillRemaining(child: _EmptySensors())
-              else ...[
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                    child: Text(
-                      _summaryLabel(
-                        total: sensors.length,
-                        offlineCount: _viewModel.offlineCount,
-                        alertCount: _viewModel.alertCount,
-                      ),
-                      style: TextStyle(
-                        color: CupertinoColors.secondaryLabel.resolveFrom(
-                          context,
-                        ),
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 20, 20, 4),
-                    child: Text(
-                      'Mes capteurs',
-                      style: TextStyle(
-                        color: CupertinoColors.secondaryLabel.resolveFrom(
-                          context,
-                        ),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverList.builder(
-                  itemCount: sensors.length,
-                  itemBuilder: (context, index) {
-                    final sensor = sensors[index];
-                    return CupertinoListSection.insetGrouped(
-                      margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-                      children: [SensorCard(sensor: sensor)],
-                    );
-                  },
-                ),
-              ],
+              ..._sliversFor(context, state),
             ],
           ),
         );
       },
     );
+  }
+
+  List<Widget> _sliversFor(BuildContext context, DashboardState state) {
+    return switch (state) {
+      DashboardInitial() || DashboardLoading() => const [
+        SliverFillRemaining(child: Center(child: CupertinoActivityIndicator())),
+      ],
+      DashboardError(:final message) => [
+        SliverFillRemaining(
+          child: _ErrorSensors(message: message, onRetry: _viewModel.load),
+        ),
+      ],
+      DashboardSuccess(:final sensors) when sensors.isEmpty => const [
+        SliverFillRemaining(child: _EmptySensors()),
+      ],
+      DashboardSuccess(
+        :final sensors,
+        :final offlineCount,
+        :final alertCount,
+      ) =>
+        [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: Text(
+                _summaryLabel(
+                  total: sensors.length,
+                  offlineCount: offlineCount,
+                  alertCount: alertCount,
+                ),
+                style: TextStyle(
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(32, 20, 20, 4),
+              child: Text(
+                'Mes capteurs',
+                style: TextStyle(
+                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          SliverList.builder(
+            itemCount: sensors.length,
+            itemBuilder: (context, index) {
+              final sensor = sensors[index];
+              return CupertinoListSection.insetGrouped(
+                margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+                children: [SensorCard(sensor: sensor)],
+              );
+            },
+          ),
+        ],
+    };
   }
 
   static String _summaryLabel({

@@ -9,7 +9,7 @@ class FakeSensorRepository implements SensorRepository {
     List<Sensor>? sensors,
   }) : _sensors = List<Sensor>.unmodifiable(sensors ?? _defaultSensors);
 
-  static const Duration defaultDelay = Duration(milliseconds: 600);
+  static const Duration defaultDelay = Duration(milliseconds: 3000);
 
   final Duration delay;
   final bool shouldFail;
