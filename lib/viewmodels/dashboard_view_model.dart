@@ -1,13 +1,24 @@
 import 'dart:collection';
 
+import 'package:flutter/foundation.dart';
 import 'package:sensor_hub/models/sensor.dart';
+import 'package:sensor_hub/repositories/sensor_repository.dart';
 
-class DashboardViewModel {
-  DashboardViewModel() : _sensors = _createMockSensors();
+class DashboardViewModel extends ChangeNotifier {
+  DashboardViewModel({required SensorRepository repository})
+    : _repository = repository; // ignore: prefer_initializing_formals
 
-  final List<Sensor> _sensors;
+  final SensorRepository _repository;
+
+  List<Sensor> _sensors = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
   UnmodifiableListView<Sensor> get sensors => UnmodifiableListView(_sensors);
+
+  bool get isLoading => _isLoading;
+
+  String? get errorMessage => _errorMessage;
 
   int get offlineCount => _sensors.where((sensor) => !sensor.isOnline).length;
 
@@ -24,38 +35,26 @@ class DashboardViewModel {
     return null;
   }
 
-  static List<Sensor> _createMockSensors() {
-    return [
-      Sensor(
-        id: 'salon',
-        name: 'Salon',
-        temperature: 21.8,
-        humidity: 45,
-        battery: 82,
-        isOnline: true,
-        status: SensorStatus.ok,
-        lastMeasurement: DateTime(2026, 9, 14, 13, 5),
-      ),
-      Sensor(
-        id: 'garage',
-        name: 'Garage',
-        temperature: 29.6,
-        humidity: 61,
-        battery: 47,
-        isOnline: true,
-        status: SensorStatus.alert,
-        lastMeasurement: DateTime(2026, 9, 14, 12, 58),
-      ),
-      Sensor(
-        id: 'cave',
-        name: 'Cave',
-        temperature: 12.4,
-        humidity: 78,
-        battery: 18,
-        isOnline: false,
-        status: SensorStatus.ok,
-        lastMeasurement: DateTime(2026, 9, 13, 8, 12),
-      ),
-    ];
+  Future<void> load() async {
+    if (_isLoading) {
+      return;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _sensors = await _repository.getSensors();
+    } on SensorRepositoryException catch (error) {
+      _sensors = [];
+      _errorMessage = error.message;
+    } catch (_) {
+      _sensors = [];
+      _errorMessage = 'Une erreur est survenue.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }
