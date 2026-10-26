@@ -12,6 +12,12 @@ String formatPercent(num value) {
   return '${value.toStringAsFixed(1).replaceAll('.', ',')} %';
 }
 
+String formatTime(DateTime value) {
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
+}
+
 String formatDateTime(DateTime value) {
   final day = value.day.toString().padLeft(2, '0');
   final month = value.month.toString().padLeft(2, '0');

@@ -12,7 +12,16 @@ void main() {
   ) async {
     await tester.pumpWidget(const SensorHubApp());
     await tester.pump();
-    await tester.pump(FakeSensorRepository.defaultDelay);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+
+    expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
+    expect(find.text('Aucune actualisation réussie'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+
+    await tester.tap(find.text('Réessayer'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
     expect(find.text('SensorHub'), findsOneWidget);
@@ -23,6 +32,10 @@ void main() {
     expect(find.text('Hors ligne'), findsOneWidget);
     expect(find.text('Alerte'), findsOneWidget);
     expect(find.text('En ligne'), findsOneWidget);
+    expect(
+      find.textContaining('Dernière actualisation réussie à '),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Salon'));
     await tester.pumpAndSettle();
@@ -35,6 +48,8 @@ void main() {
     expect(find.text('État'), findsOneWidget);
     expect(find.text('OK'), findsOneWidget);
     expect(find.text('Dernière mesure'), findsOneWidget);
+
+    await tester.pump(DashboardViewModel.defaultStaleAfter);
   });
 
   testWidgets('affiche une erreur simulée par le fake', (tester) async {
@@ -50,6 +65,9 @@ void main() {
 
     expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    viewModel.dispose();
   });
 
   testWidgets('le détail attend le chargement puis affiche le capteur', (
@@ -74,6 +92,9 @@ void main() {
     expect(find.text('Capteur du salon'), findsOneWidget);
     expect(find.text('21,8°C'), findsOneWidget);
     expect(find.text('Capteur introuvable'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    viewModel.dispose();
   });
 
   testWidgets('le détail signale un identifiant inconnu une fois chargé', (
@@ -96,6 +117,9 @@ void main() {
       find.text('Aucun capteur ne correspond à cet identifiant.'),
       findsOneWidget,
     );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    viewModel.dispose();
   });
 
   testWidgets('le détail affiche l\'erreur de chargement', (tester) async {
@@ -114,5 +138,8 @@ void main() {
     expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
     expect(find.text('Capteur introuvable'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    viewModel.dispose();
   });
 }

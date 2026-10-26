@@ -6,7 +6,10 @@ import 'package:sensor_hub/screens/sensor_detail_screen.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 
 final DashboardViewModel dashboardViewModel = DashboardViewModel(
-  repository: FakeSensorRepository(),
+  repository: FakeSensorRepository(
+    delay: const Duration(seconds: 3),
+    failuresBeforeSuccess: 1,
+  ),
 );
 
 final GoRouter appRouter = GoRouter(

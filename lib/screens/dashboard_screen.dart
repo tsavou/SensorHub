@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/utils/formatters.dart';
 import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
@@ -54,65 +55,143 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<Widget> _sliversFor(BuildContext context, DashboardState state) {
+    final previousSensors = _viewModel.lastSensors;
+
     return switch (state) {
-      DashboardInitial() || DashboardLoading() => const [
-        SliverFillRemaining(child: Center(child: CupertinoActivityIndicator())),
+      DashboardInitial() => [_loadingPlaceholder(context)],
+      DashboardLoading() when previousSensors.isNotEmpty => [
+        _loadingBanner(context),
+        _refreshStatus(context),
+        ..._sensorSlivers(context, previousSensors),
       ],
+      DashboardLoading() => [_loadingPlaceholder(context)],
       DashboardError(:final message) => [
         SliverFillRemaining(
-          child: _ErrorSensors(message: message, onRetry: _viewModel.load),
+          child: _ErrorSensors(
+            message: message,
+            onRetry: _viewModel.load,
+            refreshLabel: _viewModel.lastRefreshLabel,
+            isStale: _viewModel.isStale,
+          ),
         ),
       ],
-      DashboardSuccess(:final sensors) when sensors.isEmpty => const [
-        SliverFillRemaining(child: _EmptySensors()),
+      DashboardSuccess(:final sensors) when sensors.isEmpty => [
+        _refreshStatus(context),
+        const SliverFillRemaining(child: _EmptySensors()),
       ],
-      DashboardSuccess(
-        :final sensors,
-        :final offlineCount,
-        :final alertCount,
-      ) =>
-        [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: Text(
-                _summaryLabel(
-                  total: sensors.length,
-                  offlineCount: offlineCount,
-                  alertCount: alertCount,
-                ),
-                style: TextStyle(
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                  fontSize: 15,
-                ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(32, 20, 20, 4),
-              child: Text(
-                'Mes capteurs',
-                style: TextStyle(
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          SliverList.builder(
-            itemCount: sensors.length,
-            itemBuilder: (context, index) {
-              final sensor = sensors[index];
-              return CupertinoListSection.insetGrouped(
-                margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-                children: [SensorCard(sensor: sensor)],
-              );
-            },
-          ),
-        ],
+      DashboardSuccess(:final sensors) => [
+        _refreshStatus(context),
+        ..._sensorSlivers(context, sensors),
+      ],
     };
+  }
+
+  Widget _loadingPlaceholder(BuildContext context) {
+    return SliverFillRemaining(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CupertinoActivityIndicator(),
+            const SizedBox(height: 12),
+            const Text('Actualisation en cours'),
+            const SizedBox(height: 8),
+            Text(_viewModel.lastRefreshLabel, style: _refreshStyle(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _loadingBanner(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: Row(
+          children: [
+            const CupertinoActivityIndicator(),
+            const SizedBox(width: 8),
+            Text(
+              'Actualisation en cours',
+              style: TextStyle(
+                color: CupertinoColors.secondaryLabel.resolveFrom(context),
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _refreshStatus(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: Text(_viewModel.lastRefreshLabel, style: _refreshStyle(context)),
+      ),
+    );
+  }
+
+  TextStyle _refreshStyle(BuildContext context) {
+    return TextStyle(
+      color: _viewModel.isStale
+          ? CupertinoColors.systemOrange.resolveFrom(context)
+          : CupertinoColors.secondaryLabel.resolveFrom(context),
+      fontSize: 13,
+      fontWeight: _viewModel.isStale ? FontWeight.w600 : FontWeight.w400,
+    );
+  }
+
+  List<Widget> _sensorSlivers(BuildContext context, List<Sensor> sensors) {
+    final offlineCount = sensors.where((sensor) => !sensor.isOnline).length;
+    final alertCount = sensors
+        .where(
+          (sensor) => sensor.isOnline && sensor.status == SensorStatus.alert,
+        )
+        .length;
+
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+          child: Text(
+            _summaryLabel(
+              total: sensors.length,
+              offlineCount: offlineCount,
+              alertCount: alertCount,
+            ),
+            style: TextStyle(
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 20, 20, 4),
+          child: Text(
+            'Mes capteurs',
+            style: TextStyle(
+              color: CupertinoColors.secondaryLabel.resolveFrom(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+      SliverList.builder(
+        itemCount: sensors.length,
+        itemBuilder: (context, index) {
+          final sensor = sensors[index];
+          return CupertinoListSection.insetGrouped(
+            margin: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+            children: [SensorCard(sensor: sensor)],
+          );
+        },
+      ),
+    ];
   }
 
   static String _summaryLabel({
@@ -161,10 +240,17 @@ class _EmptySensors extends StatelessWidget {
 }
 
 class _ErrorSensors extends StatelessWidget {
-  const _ErrorSensors({required this.message, required this.onRetry});
+  const _ErrorSensors({
+    required this.message,
+    required this.onRetry,
+    required this.refreshLabel,
+    required this.isStale,
+  });
 
   final String message;
   final VoidCallback onRetry;
+  final String refreshLabel;
+  final bool isStale;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +271,18 @@ class _ErrorSensors extends StatelessWidget {
             CupertinoButton.filled(
               onPressed: onRetry,
               child: const Text('Réessayer'),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              refreshLabel,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isStale
+                    ? CupertinoColors.systemOrange.resolveFrom(context)
+                    : CupertinoColors.secondaryLabel.resolveFrom(context),
+                fontSize: 13,
+                fontWeight: isStale ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
           ],
         ),

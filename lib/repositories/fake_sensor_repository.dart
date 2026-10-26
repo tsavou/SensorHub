@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/repositories/sensor_repository.dart';
 
@@ -6,19 +7,35 @@ class FakeSensorRepository implements SensorRepository {
   FakeSensorRepository({
     this.delay = defaultDelay,
     this.shouldFail = false,
+    int failuresBeforeSuccess = 0,
     List<Sensor>? sensors,
-  }) : _sensors = List<Sensor>.unmodifiable(sensors ?? _defaultSensors);
+  }) : _remainingFailures = failuresBeforeSuccess,
+       _sensors = List<Sensor>.unmodifiable(sensors ?? _defaultSensors);
 
   static const Duration defaultDelay = Duration(milliseconds: 3000);
 
   final Duration delay;
-  final bool shouldFail;
+
+  /// Échec permanent. Mutable pour enchaîner un succès puis une erreur
+  /// sur la même instance, pendant un test ou une démo.
+  bool shouldFail;
+
   final List<Sensor> _sensors;
+  int _remainingFailures;
+
+  /// Nombre de chargements réellement exécutés (les appels ignorés
+  /// par le ViewModel n'incrémentent pas ce compteur).
+  int loadCount = 0;
 
   @override
   Future<List<Sensor>> getSensors() async {
+    loadCount++;
+    debugPrint('FakeSensorRepository loadCount=$loadCount');
     await Future<void>.delayed(delay);
-    if (shouldFail) {
+    if (shouldFail || _remainingFailures > 0) {
+      if (_remainingFailures > 0) {
+        _remainingFailures--;
+      }
       throw const SensorRepositoryException(
         'Impossible de charger les capteurs.',
       );
