@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/repositories/sensor_repository.dart';
 import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 
@@ -12,19 +11,6 @@ class DashboardViewModel extends ChangeNotifier {
   DashboardState _state = const DashboardInitial();
 
   DashboardState get state => _state;
-
-  Sensor? findById(String id) {
-    final current = _state;
-    if (current is! DashboardSuccess) {
-      return null;
-    }
-    for (final sensor in current.sensors) {
-      if (sensor.id == id) {
-        return sensor;
-      }
-    }
-    return null;
-  }
 
   Future<void> load() async {
     if (_state is DashboardLoading) {

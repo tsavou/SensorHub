@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:sensor_hub/models/sensor.dart';
 import 'package:sensor_hub/theme/app_theme.dart';
 import 'package:sensor_hub/utils/formatters.dart';
+import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 import 'package:sensor_hub/widgets/status_badge.dart';
 
-class SensorDetailScreen extends StatelessWidget {
+class SensorDetailScreen extends StatefulWidget {
   const SensorDetailScreen({
     super.key,
     required this.sensorId,
@@ -17,35 +18,57 @@ class SensorDetailScreen extends StatelessWidget {
   final DashboardViewModel viewModel;
 
   @override
+  State<SensorDetailScreen> createState() => _SensorDetailScreenState();
+}
+
+class _SensorDetailScreenState extends State<SensorDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.viewModel.state is DashboardInitial) {
+      widget.viewModel.load();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final sensor = viewModel.findById(sensorId);
-    if (sensor == null) {
-      return CupertinoPageScaffold(
-        navigationBar: const CupertinoNavigationBar(
-          previousPageTitle: 'SensorHub',
-          middle: Text('Capteur introuvable'),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  CupertinoIcons.search,
-                  size: 40,
-                  color: CupertinoColors.secondaryLabel.resolveFrom(context),
-                ),
-                const SizedBox(height: 12),
-                const Text('Aucun capteur ne correspond à cet identifiant.'),
-                const SizedBox(height: 16),
-                CupertinoButton.filled(
-                  onPressed: () => _goBack(context),
-                  child: const Text('Retour à la liste'),
-                ),
-              ],
+    return ListenableBuilder(
+      listenable: widget.viewModel,
+      builder: (context, _) {
+        return switch (widget.viewModel.state) {
+          DashboardInitial() || DashboardLoading() => const _DetailFallback(
+            title: 'Capteur',
+            child: Center(child: CupertinoActivityIndicator()),
+          ),
+          DashboardError(:final message) => _DetailFallback(
+            title: 'Capteur',
+            child: _DetailMessage(
+              icon: CupertinoIcons.exclamationmark_triangle,
+              iconColor: CupertinoColors.systemOrange.resolveFrom(context),
+              message: message,
+              actionLabel: 'Réessayer',
+              onAction: widget.viewModel.load,
             ),
           ),
+          DashboardSuccess(:final sensors) => _loaded(context, sensors),
+        };
+      },
+    );
+  }
+
+  Widget _loaded(BuildContext context, List<Sensor> sensors) {
+    final sensor = sensors
+        .where((item) => item.id == widget.sensorId)
+        .firstOrNull;
+    if (sensor == null) {
+      return _DetailFallback(
+        title: 'Capteur introuvable',
+        child: _DetailMessage(
+          icon: CupertinoIcons.search,
+          iconColor: CupertinoColors.secondaryLabel.resolveFrom(context),
+          message: 'Aucun capteur ne correspond à cet identifiant.',
+          actionLabel: 'Retour à la liste',
+          onAction: () => _goBack(context),
         ),
       );
     }
@@ -59,6 +82,62 @@ class SensorDetailScreen extends StatelessWidget {
     } else {
       context.go('/');
     }
+  }
+}
+
+class _DetailFallback extends StatelessWidget {
+  const _DetailFallback({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        previousPageTitle: 'SensorHub',
+        middle: Text(title),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _DetailMessage extends StatelessWidget {
+  const _DetailMessage({
+    required this.icon,
+    required this.iconColor,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: iconColor),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            CupertinoButton.filled(
+              onPressed: onAction,
+              child: Text(actionLabel),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

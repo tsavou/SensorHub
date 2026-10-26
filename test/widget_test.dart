@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sensor_hub/main.dart';
 import 'package:sensor_hub/repositories/fake_sensor_repository.dart';
 import 'package:sensor_hub/screens/dashboard_screen.dart';
+import 'package:sensor_hub/screens/sensor_detail_screen.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 
 void main() {
@@ -49,5 +50,69 @@ void main() {
 
     expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
+  });
+
+  testWidgets('le détail attend le chargement puis affiche le capteur', (
+    tester,
+  ) async {
+    final viewModel = DashboardViewModel(
+      repository: FakeSensorRepository(delay: const Duration(seconds: 1)),
+    );
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SensorDetailScreen(sensorId: 'salon', viewModel: viewModel),
+      ),
+    );
+
+    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    expect(find.text('Capteur introuvable'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+
+    expect(find.text('Capteur du salon'), findsOneWidget);
+    expect(find.text('21,8°C'), findsOneWidget);
+    expect(find.text('Capteur introuvable'), findsNothing);
+  });
+
+  testWidgets('le détail signale un identifiant inconnu une fois chargé', (
+    tester,
+  ) async {
+    final viewModel = DashboardViewModel(
+      repository: FakeSensorRepository(delay: Duration.zero),
+    );
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SensorDetailScreen(sensorId: 'inconnu', viewModel: viewModel),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Capteur introuvable'), findsOneWidget);
+    expect(
+      find.text('Aucun capteur ne correspond à cet identifiant.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('le détail affiche l\'erreur de chargement', (tester) async {
+    final viewModel = DashboardViewModel(
+      repository: FakeSensorRepository(delay: Duration.zero, shouldFail: true),
+    );
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: SensorDetailScreen(sensorId: 'salon', viewModel: viewModel),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
+    expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Capteur introuvable'), findsNothing);
   });
 }
