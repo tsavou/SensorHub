@@ -52,7 +52,7 @@ void main() {
     expect(find.text('Réessayer'), findsOneWidget);
   });
 
-  testWidgets('le détail attend le chargement puis affiche le capteur', (
+  testWidgets('le détail attend le chargement lancé par la liste', (
     tester,
   ) async {
     final viewModel = DashboardViewModel(
@@ -60,16 +60,15 @@ void main() {
     );
 
     await tester.pumpWidget(
-      CupertinoApp(
-        home: SensorDetailScreen(sensorId: 'salon', viewModel: viewModel),
-      ),
+      CupertinoApp(home: DashboardScreen(viewModel: viewModel)),
     );
+    await _openDetail(tester, viewModel, 'salon');
 
-    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    expect(find.byType(CupertinoActivityIndicator), findsWidgets);
     expect(find.text('Capteur introuvable'), findsNothing);
 
     await tester.pump(const Duration(seconds: 1));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('Capteur du salon'), findsOneWidget);
     expect(find.text('21,8°C'), findsOneWidget);
@@ -84,12 +83,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      CupertinoApp(
-        home: SensorDetailScreen(sensorId: 'inconnu', viewModel: viewModel),
-      ),
+      CupertinoApp(home: DashboardScreen(viewModel: viewModel)),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
+    await _openDetail(tester, viewModel, 'inconnu');
+    await tester.pumpAndSettle();
 
     expect(find.text('Capteur introuvable'), findsOneWidget);
     expect(
@@ -104,15 +103,30 @@ void main() {
     );
 
     await tester.pumpWidget(
-      CupertinoApp(
-        home: SensorDetailScreen(sensorId: 'salon', viewModel: viewModel),
-      ),
+      CupertinoApp(home: DashboardScreen(viewModel: viewModel)),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
+    await _openDetail(tester, viewModel, 'salon');
+    await tester.pumpAndSettle();
 
-    expect(find.text('Impossible de charger les capteurs.'), findsOneWidget);
-    expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Impossible de charger les capteurs.'), findsWidgets);
+    expect(find.text('Réessayer'), findsWidgets);
     expect(find.text('Capteur introuvable'), findsNothing);
   });
+}
+
+Future<void> _openDetail(
+  WidgetTester tester,
+  DashboardViewModel viewModel,
+  String sensorId,
+) async {
+  final context = tester.element(find.byType(DashboardScreen));
+  Navigator.of(context).push(
+    CupertinoPageRoute<void>(
+      builder: (_) =>
+          SensorDetailScreen(sensorId: sensorId, viewModel: viewModel),
+    ),
+  );
+  await tester.pump();
 }

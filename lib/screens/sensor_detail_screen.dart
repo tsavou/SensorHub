@@ -7,7 +7,7 @@ import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 import 'package:sensor_hub/viewmodels/dashboard_view_model.dart';
 import 'package:sensor_hub/widgets/status_badge.dart';
 
-class SensorDetailScreen extends StatefulWidget {
+class SensorDetailScreen extends StatelessWidget {
   const SensorDetailScreen({
     super.key,
     required this.sensorId,
@@ -18,24 +18,11 @@ class SensorDetailScreen extends StatefulWidget {
   final DashboardViewModel viewModel;
 
   @override
-  State<SensorDetailScreen> createState() => _SensorDetailScreenState();
-}
-
-class _SensorDetailScreenState extends State<SensorDetailScreen> {
-  @override
-  void initState() {
-    super.initState();
-    if (widget.viewModel.state is DashboardInitial) {
-      widget.viewModel.load();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: widget.viewModel,
+      listenable: viewModel,
       builder: (context, _) {
-        return switch (widget.viewModel.state) {
+        return switch (viewModel.state) {
           DashboardInitial() || DashboardLoading() => const _DetailFallback(
             title: 'Capteur',
             child: Center(child: CupertinoActivityIndicator()),
@@ -47,7 +34,7 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
               iconColor: CupertinoColors.systemOrange.resolveFrom(context),
               message: message,
               actionLabel: 'Réessayer',
-              onAction: widget.viewModel.load,
+              onAction: viewModel.load,
             ),
           ),
           DashboardSuccess(:final sensors) => _loaded(context, sensors),
@@ -57,9 +44,7 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
   }
 
   Widget _loaded(BuildContext context, List<Sensor> sensors) {
-    final sensor = sensors
-        .where((item) => item.id == widget.sensorId)
-        .firstOrNull;
+    final sensor = sensors.where((item) => item.id == sensorId).firstOrNull;
     if (sensor == null) {
       return _DetailFallback(
         title: 'Capteur introuvable',
@@ -75,13 +60,13 @@ class _SensorDetailScreenState extends State<SensorDetailScreen> {
 
     return _SensorDetailBody(sensor: sensor);
   }
+}
 
-  static void _goBack(BuildContext context) {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go('/');
-    }
+void _goBack(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go('/');
   }
 }
 

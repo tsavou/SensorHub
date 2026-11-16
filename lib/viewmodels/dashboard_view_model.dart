@@ -3,8 +3,7 @@ import 'package:sensor_hub/repositories/sensor_repository.dart';
 import 'package:sensor_hub/viewmodels/dashboard_state.dart';
 
 class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel({required SensorRepository repository})
-    : _repository = repository; // ignore: prefer_initializing_formals
+  DashboardViewModel({required this._repository});
 
   final SensorRepository _repository;
 
